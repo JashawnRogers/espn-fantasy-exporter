@@ -42,19 +42,19 @@ snapshot.
 
 ### Command-line arguments
 
-| Argument | Required | Default | Description |
-| --- | --- | --- | --- |
-| `--league-id <integer>` | Yes | — | ESPN fantasy league ID. |
-| `--year <integer>` | Yes | — | ESPN season year to export. Use the season shown in the league URL/settings. |
-| `--output <path>` | No | `data/basketball_snapshot.json` | Destination JSON file. The filename must end in `.json`. |
-| `--my-team-id <integer>` | No | None | Identifies your team. The matching team gets `is_my_team: true`, and its ID is written to `context.my_team_id`. |
-| `--free-agent-limit <integer>` | No | `100` | Maximum number of free-agent/waiver players to request. Use `0` to skip this request. Must not be negative. |
-| `--recent-activity-limit <integer>` | No | `50` | Maximum recent add/drop/trade activity records to request. Use `0` to skip this request. Must not be negative. |
-| `--news-limit <integer>` | No | `0` | Number of priority players for which to request news. Use `0` to skip news requests. Must not be negative. |
-| `--skip-player-details` | No | Off | Skips player-card enrichment for a faster, smaller export. Schedules and detailed stat splits may then be absent or less complete. |
-| `--include-game-logs` | No | Off | Includes individual game stat splits. This can substantially increase the JSON size. |
-| `--debug` | No | Off | Enables debugging in the underlying ESPN API client. |
-| `-h`, `--help` | No | — | Prints the built-in command help and exits. |
+| Argument                            | Required | Default                         | Description                                                                                                                        |
+| ----------------------------------- | -------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `--league-id <integer>`             | Yes      | —                               | ESPN fantasy league ID.                                                                                                            |
+| `--year <integer>`                  | Yes      | —                               | ESPN season year to export. Use the season shown in the league URL/settings.                                                       |
+| `--output <path>`                   | No       | `data/basketball_snapshot.json` | Destination JSON file. The filename must end in `.json`.                                                                           |
+| `--my-team-id <integer>`            | No       | None                            | Identifies your team. The matching team gets `is_my_team: true`, and its ID is written to `context.my_team_id`.                    |
+| `--free-agent-limit <integer>`      | No       | `100`                           | Maximum number of free-agent/waiver players to request. Use `0` to skip this request. Must not be negative.                        |
+| `--recent-activity-limit <integer>` | No       | `50`                            | Maximum recent add/drop/trade activity records to request. Use `0` to skip this request. Must not be negative.                     |
+| `--news-limit <integer>`            | No       | `0`                             | Number of priority players for which to request news. Use `0` to skip news requests. Must not be negative.                         |
+| `--skip-player-details`             | No       | Off                             | Skips player-card enrichment for a faster, smaller export. Schedules and detailed stat splits may then be absent or less complete. |
+| `--include-game-logs`               | No       | Off                             | Includes individual game stat splits. This can substantially increase the JSON size.                                               |
+| `--debug`                           | No       | Off                             | Enables debugging in the underlying ESPN API client.                                                                               |
+| `-h`, `--help`                      | No       | —                               | Prints the built-in command help and exits.                                                                                        |
 
 Example with the optional export controls:
 
@@ -91,92 +91,6 @@ arguments. Public leagues should leave both variables unset.
 Pass each argument to `ProcessBuilder` as a separate list item. This avoids
 shell quoting problems and works when paths contain spaces.
 
-```java
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-public final class EspnExporter {
-    private static final int EXPECTED_SCHEMA_VERSION = 2;
-
-    public static JsonNode exportLeague(
-            Path projectDirectory,
-            Path pythonExecutable,
-            long leagueId,
-            int seasonYear,
-            Path outputFile,
-            String espnS2,
-            String espnSwid) throws IOException, InterruptedException {
-
-        Path script = projectDirectory.resolve("export_basketball_rosters.py")
-                .toAbsolutePath()
-                .normalize();
-        Path resolvedPython = (pythonExecutable.isAbsolute()
-                ? pythonExecutable
-                : projectDirectory.resolve(pythonExecutable))
-                .toAbsolutePath()
-                .normalize();
-        Path absoluteOutput = (outputFile.isAbsolute()
-                ? outputFile
-                : projectDirectory.resolve(outputFile))
-                .toAbsolutePath()
-                .normalize();
-
-        List<String> command = new ArrayList<>(List.of(
-                resolvedPython.toString(),
-                script.toString(),
-                "--league-id", Long.toString(leagueId),
-                "--year", Integer.toString(seasonYear),
-                "--output", absoluteOutput.toString(),
-                "--free-agent-limit", "100",
-                "--recent-activity-limit", "50"
-        ));
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        processBuilder.directory(projectDirectory.toFile());
-        processBuilder.redirectErrorStream(true);
-
-        Map<String, String> environment = processBuilder.environment();
-        if ((espnS2 == null) != (espnSwid == null)) {
-            throw new IllegalArgumentException(
-                    "Provide both ESPN_S2 and ESPN_SWID, or neither");
-        }
-        if (espnS2 != null && espnSwid != null) {
-            environment.put("ESPN_S2", espnS2);
-            environment.put("ESPN_SWID", espnSwid);
-        } else {
-            environment.remove("ESPN_S2");
-            environment.remove("ESPN_SWID");
-        }
-
-        Process process = processBuilder.start();
-        String processOutput = new String(
-                process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int exitCode = process.waitFor();
-
-        if (exitCode != 0) {
-            throw new IOException(
-                    "ESPN export failed with exit code " + exitCode + ": "
-                            + processOutput.trim());
-        }
-
-        ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
-        JsonNode snapshot = mapper.readTree(absoluteOutput.toFile());
-        int schemaVersion = snapshot.path("schema_version").asInt(-1);
-        if (schemaVersion != EXPECTED_SCHEMA_VERSION) {
-            throw new IOException("Unsupported ESPN snapshot schema: " + schemaVersion);
-        }
-        return snapshot;
-    }
-}
-```
-
 For the repository's default virtual environment, pass
 `projectDirectory.resolve("env/bin/python")` on macOS/Linux or
 `projectDirectory.resolve("env\\Scripts\\python.exe")` on Windows. Keep the
@@ -189,15 +103,15 @@ safe to read.
 
 ### Exit codes
 
-| Code | Meaning |
-| ---: | --- |
-| `0` | Export completed and the output file was written. |
-| `2` | Invalid configuration or arguments, including incomplete credentials or an invalid output filename/limit. `argparse` also uses code `2` for malformed or missing CLI arguments. |
-| `3` | ESPN denied access; private-league credentials may be missing or invalid. |
-| `4` | ESPN could not find the requested league/year. |
-| `5` | A network request to ESPN failed. |
-| `6` | ESPN returned an unexpected response. |
-| Other nonzero code | An unexpected Python/runtime failure occurred. Treat the export as failed and inspect the captured output. |
+|               Code | Meaning                                                                                                                                                                         |
+| -----------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                `0` | Export completed and the output file was written.                                                                                                                               |
+|                `2` | Invalid configuration or arguments, including incomplete credentials or an invalid output filename/limit. `argparse` also uses code `2` for malformed or missing CLI arguments. |
+|                `3` | ESPN denied access; private-league credentials may be missing or invalid.                                                                                                       |
+|                `4` | ESPN could not find the requested league/year.                                                                                                                                  |
+|                `5` | A network request to ESPN failed.                                                                                                                                               |
+|                `6` | ESPN returned an unexpected response.                                                                                                                                           |
+| Other nonzero code | An unexpected Python/runtime failure occurred. Treat the export as failed and inspect the captured output.                                                                      |
 
 ## JSON contract
 
